@@ -8,8 +8,8 @@
     "start": "next start"
   },
   "dependencies": {
-    "@modelcontextprotocol/ext-apps": "^1.0.1",
-    "@modelcontextprotocol/sdk": "1.25.2",
+    "@modelcontextprotocol/ext-apps": "1.7.5",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "mcp-handler": "^1.0.7",
     "next": "16.1.6",
     "react": "19.2.3",
