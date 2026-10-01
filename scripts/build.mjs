@@ -1,0 +1,11 @@
+import { build } from 'esbuild';
+import fs from 'node:fs/promises';
+await fs.mkdir('build',{recursive:true});
+const bridge=await build({entryPoints:['src/bridge.ts'],bundle:true,format:'iife',platform:'browser',minify:true,write:false});
+let html=await fs.readFile('public/combat-widget.html','utf8');
+if(!html.includes('<!-- recovery-mode -->'))html=html.replace('</body>',`<script>${bridge.outputFiles[0].text.replaceAll('</script','<\\/script')}</script></body>`);
+await fs.writeFile('build/widget.html',html);
+await build({entryPoints:['src/worker.ts'],bundle:true,format:'esm',platform:'browser',target:'es2022',outfile:'dist/server/index.js',loader:{'.html':'text'},minify:true});
+await fs.mkdir('dist/client',{recursive:true});
+await fs.writeFile('dist/client/index.html',html);
+await fs.writeFile('dist/server/wrangler.json',JSON.stringify({name:'dnd-combat-widget',main:'index.js',compatibility_date:'2026-09-01',compatibility_flags:['nodejs_compat']},null,2));
