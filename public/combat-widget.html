@@ -5,34 +5,254 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>D&D Combat</title>
 <style>
-:root{--bg:#0b0e0a;--panel:#141914;--line:#334033;--text:#edf2e8;--muted:#98a294;--gold:#d6ba70;--green:#83b879;--blue:#74aee0;--red:#d67368}*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}body{min-height:100vh}.app{min-height:100vh;display:flex;flex-direction:column}.top{padding:10px;border-bottom:1px solid var(--line);background:#10140f}.top h1{font-size:16px;margin:0 0 4px}.sub{font-size:9px;color:var(--muted)}.status{display:flex;gap:6px;flex-wrap:wrap;padding:7px;border-bottom:1px solid var(--line)}.pill{font-size:8px;border:1px solid #4a5747;border-radius:999px;padding:5px 7px}.pill.good{border-color:#426843;color:#bde5b7}.pill.warn{border-color:#6b5a30;color:#efd17c}.mapwrap{height:56vh;min-height:360px;background:#070907;border-bottom:1px solid var(--line)}canvas{width:100%;height:100%;display:block;touch-action:none}.panel{padding:8px;background:var(--panel)}.fighters{display:flex;gap:6px;overflow:auto}.fighter{min-width:110px;text-align:left;border:1px solid #3b4739;background:#182018;color:var(--text);border-radius:8px;padding:8px}.fighter.sel{border-color:var(--gold);background:#2a2618}.fighter small{display:block;color:var(--muted);font-size:8px;margin-top:2px}.row{display:flex;gap:6px;margin-top:7px}.row button{flex:1}.card{margin-top:7px;border:1px solid var(--line);background:#111610;border-radius:8px;padding:8px;font-size:9px;line-height:1.4}.cmd{margin-top:auto;border-top:1px solid var(--line);padding:8px;background:#0d110c;position:sticky;bottom:0}.cmdhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.cmdhead strong{font-size:10px}.bridge{font-size:8px;border:1px solid #52604e;border-radius:999px;padding:4px 6px}.bridge.live{border-color:#46704a;color:#b9e7b8}.bridge.err{border-color:#77433d;color:#efaaa2}.send{display:flex;gap:6px}.send textarea{flex:1;min-height:58px;resize:vertical;background:#151b14;border:1px solid #3a4436;color:var(--text);border-radius:8px;padding:8px;font:inherit;font-size:10px}.send button,.row button,.quick button{border:1px solid #3d483a;background:#192018;color:var(--text);border-radius:8px;padding:8px;font-size:9px;font-weight:700}.quick{display:flex;gap:5px;overflow:auto;margin-top:6px}.quick button{white-space:nowrap}.help{font-size:8px;color:var(--muted);margin-top:5px}.pending{opacity:.55;pointer-events:none}@media(max-height:720px){.mapwrap{height:50vh;min-height:300px}}
+:root{--bg:#0b0e0a;--panel:#141914;--line:#334033;--text:#edf2e8;--muted:#98a294;--gold:#d6ba70;--green:#83b879;--red:#d67368}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif;overflow:hidden}
+body{height:auto}
+.app{height:500px;max-height:550px;display:flex;flex-direction:column;overflow:auto;background:var(--bg)}
+.top{padding:10px;border-bottom:1px solid var(--line);background:#10140f;flex:0 0 auto}
+.top h1{font-size:16px;margin:0 0 4px}.sub{font-size:9px;color:var(--muted)}
+.status{display:flex;gap:6px;flex-wrap:wrap;padding:7px;border-bottom:1px solid var(--line);flex:0 0 auto}
+.pill{font-size:8px;border:1px solid #4a5747;border-radius:999px;padding:5px 7px}.pill.good{border-color:#426843;color:#bde5b7}.pill.warn{border-color:#6b5a30;color:#efd17c}
+.error{display:none;margin:8px;border:1px solid #8b4b44;background:#281513;color:#ffd0cb;border-radius:8px;padding:8px;font-size:9px;white-space:pre-wrap;flex:0 0 auto}
+.mapwrap{height:170px;flex:0 0 170px;background:#070907;border-bottom:1px solid var(--line);position:relative;overflow:hidden}
+canvas{width:100%;height:100%;display:block;touch-action:none}
+.mapplaceholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:18px;color:var(--muted);font-size:10px;line-height:1.45;background:#0a0d09}
+.panel{padding:8px;background:var(--panel);flex:0 0 auto}.fighters{display:flex;gap:6px;overflow:auto}
+.fighter{min-width:110px;text-align:left;border:1px solid #3b4739;background:#182018;color:var(--text);border-radius:8px;padding:8px}.fighter.sel{border-color:var(--gold);background:#2a2618}.fighter small{display:block;color:var(--muted);font-size:8px;margin-top:2px}
+.row{display:flex;gap:6px;margin-top:7px}.row button{flex:1}
+.card{margin-top:7px;border:1px solid var(--line);background:#111610;border-radius:8px;padding:8px;font-size:9px;line-height:1.4}
+.cmd{margin-top:0;border-top:1px solid var(--line);padding:8px;background:#0d110c;position:static;flex:0 0 auto}.cmdhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.cmdhead strong{font-size:10px}.bridge{font-size:8px;border:1px solid #52604e;border-radius:999px;padding:4px 6px}.bridge.live{border-color:#46704a;color:#b9e7b8}.bridge.err{border-color:#77433d;color:#efaaa2}
+.send{display:flex;gap:6px}.send textarea{flex:1;min-height:52px;resize:none;background:#151b14;border:1px solid #3a4436;color:var(--text);border-radius:8px;padding:8px;font:inherit;font-size:10px}
+.send button,.row button,.quick button{border:1px solid #3d483a;background:#192018;color:var(--text);border-radius:8px;padding:8px;font-size:9px;font-weight:700}.quick{display:flex;gap:5px;overflow:auto;margin-top:6px}.quick button{white-space:nowrap}.help{font-size:8px;color:var(--muted);margin-top:5px}.pending{opacity:.55;pointer-events:none}
+html[data-mode="fullscreen"],html[data-mode="fullscreen"] body{height:100%;overflow:hidden}
+html[data-mode="fullscreen"] .app{height:100vh;max-height:none;overflow:hidden}
+html[data-mode="fullscreen"] .mapwrap{height:auto;flex:1 1 auto;min-height:0}
+html[data-mode="fullscreen"] .panel,html[data-mode="fullscreen"] .cmd{flex:0 0 auto}
 </style>
 </head>
 <body>
-<div class="app">
-<div class="top"><h1>Eastern Watch Station Combat</h1><div class="sub" id="subtitle">Loading player-safe combat state…</div></div>
-<div class="status"><span class="pill good" id="roundPill">ROUND —</span><span class="pill warn" id="phasePill">PHASE —</span><span class="pill" id="encounterPill">Encounter</span></div>
-<div class="mapwrap"><canvas id="map"></canvas></div>
-<div class="panel"><div class="fighters" id="fighters"></div><div class="row"><button id="fit">Fit Map</button><button id="listen">Listen</button><button id="ready">Ready Bow</button></div><div class="card" id="details">Select a combatant.</div></div>
-<div class="cmd" id="dock"><div class="cmdhead"><strong>LIVE COMBAT COMMAND</strong><span class="bridge" id="bridge">checking…</span></div><div class="send"><textarea id="command" placeholder="Tell the DM what Jason does…"></textarea><button id="send">Send</button></div><div class="quick"><button data-cmd="Order Orrin to stay with me and ready his bow.">Order Orrin</button><button data-cmd="Keep Calder concealed and covering the lower entrance.">Hold Calder</button><button data-cmd="I watch the barricaded NE door for movement while staying in cover.">Watch Door</button></div><div class="help" id="help">Commands are proposals. ChatGPT remains the authoritative DM resolver.</div></div>
+<div class="app" id="app">
+  <div class="top"><h1>D&D Combat</h1><div class="sub" id="subtitle">Waiting for player-safe combat state…</div></div>
+  <div class="status"><span class="pill good" id="roundPill">ROUND —</span><span class="pill warn" id="phasePill">PHASE —</span><span class="pill" id="encounterPill">Encounter</span></div>
+  <div class="error" id="errorBox"></div>
+  <div class="mapwrap" id="mapwrap">
+    <canvas id="map" width="1" height="1" hidden></canvas>
+    <div class="mapplaceholder" id="mapPlaceholder">Bare widget test is active.<br>The canvas has not been allocated yet.<br>Use <strong>Enable Map</strong> below to test the graphics layer separately.</div>
+  </div>
+  <div class="panel">
+    <div class="fighters" id="fighters"></div>
+    <div class="row"><button id="mapToggle">Enable Map</button><button id="fit">Fit Map</button><button id="fullscreen">Fullscreen</button></div>
+    <div class="row"><button id="listen">Listen</button><button id="ready">Ready Bow</button></div>
+    <div class="card" id="details">Waiting for combat state.</div>
+  </div>
+  <div class="cmd" id="dock">
+    <div class="cmdhead"><strong>LIVE COMBAT COMMAND</strong><span class="bridge" id="bridge">checking…</span></div>
+    <div class="send"><textarea id="command" placeholder="Tell the DM what your character does…"></textarea><button id="send">Send</button></div>
+    <div class="quick"><button data-cmd="I hold position and watch the visible hostile.">Hold</button><button data-cmd="I ready my weapon and prepare to attack the visible hostile.">Ready Attack</button><button data-cmd="I end my turn without taking another action.">End Turn</button></div>
+    <div class="help" id="help">Commands are proposals. ChatGPT remains the authoritative DM resolver.</div>
+  </div>
 </div>
 <script>
 (()=>{
-const $=s=>document.querySelector(s), canvas=$('#map'),ctx=canvas.getContext('2d');
-let state=(window.openai&&window.openai.toolInput&&window.openai.toolInput.combatState)||null;
-let fighters=[],selected=null,pending=false,view={x:0,y:0,z:1};
-function normalize(){if(!state){state={campaignId:'JASON_MERCER_001',encounterId:'QST-BR-003-EASTERN-WATCH-COMBAT-01',stateRevision:'unknown',round:1,phase:'DECLARATION',combatants:[]}}fighters=(state.combatants||[]).filter(x=>x.playerVisible!==false);selected=fighters[0]?.entityId||null;$('#roundPill').textContent='ROUND '+state.round;$('#phasePill').textContent='PHASE '+String(state.phase||'DECLARATION').toUpperCase();$('#encounterPill').textContent=state.encounterId||'Encounter';$('#subtitle').textContent='Player-safe tactical state • '+(state.stateRevision||'revision unknown');renderFighters();resize();fit();updateBridge()}
-function bridge(){return window.openai&&typeof window.openai.sendFollowUpMessage==='function'?window.openai:null}
-function updateBridge(msg){const b=bridge(),el=$('#bridge'),dock=$('#dock');if(pending){el.textContent='awaiting DM';el.className='bridge live';dock.classList.add('pending');$('#help').textContent=msg||'Command sent. Waiting for DM adjudication.';return}dock.classList.remove('pending');if(b){el.textContent='LIVE';el.className='bridge live';$('#help').textContent=msg||'Connected to ChatGPT.'}else{el.textContent='NO BRIDGE';el.className='bridge err';$('#help').textContent=msg||'Not running in a verified ChatGPT bridge.'}}
-async function send(text){text=(text||'').trim();if(!text||pending)return;const b=bridge();if(!b){updateBridge('Action NOT sent because no live bridge is available.');return}pending=true;updateBridge();const payload={encounterId:state.encounterId,stateRevision:state.stateRevision,round:state.round,phase:state.phase,text};try{await b.sendFollowUpMessage({prompt:'DND_COMBAT_ACTION '+JSON.stringify(payload),scrollToBottom:true})}catch(e){pending=false;updateBridge('Send failed: '+(e?.message||e))}}
-function resize(){const r=canvas.getBoundingClientRect(),d=devicePixelRatio||1;canvas.width=Math.max(1,Math.floor(r.width*d));canvas.height=Math.max(1,Math.floor(r.height*d));ctx.setTransform(d,0,0,d,0,0);draw()}
-function fit(){const r=canvas.getBoundingClientRect();view={x:r.width*.08,y:r.height*.08,z:Math.min(r.width/656,r.height/900)*.84};draw()}
-function p(x,y){return{x:view.x+x*view.z,y:view.y+y*view.z}}
-function drawBuilding(){ctx.save();ctx.translate(view.x,view.y);ctx.scale(view.z,view.z);ctx.fillStyle='#1a2118';ctx.strokeStyle='#65705f';ctx.lineWidth=2/view.z;ctx.fillRect(240,250,260,330);ctx.strokeRect(240,250,260,330);ctx.fillStyle='#11150f';ctx.fillRect(268,282,204,105);ctx.fillRect(268,420,204,125);ctx.strokeStyle='#394237';ctx.strokeRect(268,282,204,105);ctx.strokeRect(268,420,204,125);ctx.fillStyle='#8f7f50';ctx.fillRect(485,440,16,48);ctx.fillStyle='#45523f';ctx.fillRect(330,560,80,18);ctx.fillStyle='#596454';ctx.font='bold 16px Arial';ctx.fillText('EASTERN WATCH',285,235);ctx.font='12px Arial';ctx.fillText('Upper room',330,340);ctx.fillText('Lower room',330,487);ctx.fillText('NE door',505,470);ctx.restore()}
-function draw(){const r=canvas.getBoundingClientRect();ctx.clearRect(0,0,r.width,r.height);ctx.fillStyle='#090d08';ctx.fillRect(0,0,r.width,r.height);drawBuilding();for(const f of fighters){if(f.x==null||f.y==null)continue;const q=p(f.x,f.y),sel=f.entityId===selected;ctx.beginPath();ctx.arc(q.x,q.y,sel?10:8,0,Math.PI*2);ctx.fillStyle=f.side==='party'?'#83b879':'#d67368';ctx.fill();ctx.lineWidth=sel?3:1.5;ctx.strokeStyle=sel?'#ffe698':'#111';ctx.stroke();ctx.fillStyle='#071006';ctx.font='bold 8px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(f.name.split(/\s+/).map(s=>s[0]).slice(0,2).join(''),q.x,q.y)} }
-function renderFighters(){const box=$('#fighters');box.innerHTML=fighters.map(f=>`<button class="fighter ${f.entityId===selected?'sel':''}" data-id="${f.entityId}">${f.name}<small>${f.movementFt??'?'} ft move • ${f.positionCertainty||'known'}</small></button>`).join('');box.querySelectorAll('button').forEach(b=>b.onclick=()=>{selected=b.dataset.id;renderFighters();showDetails();draw()});showDetails()}
-function showDetails(){const f=fighters.find(x=>x.entityId===selected);$('#details').innerHTML=f?`<strong>${f.name}</strong><br>${f.positionBasis||'Position known'}<br>Movement: ${f.movementFt??'UNKNOWN'} ft`:'No combatant selected.'}
-$('#fit').onclick=fit;$('#listen').onclick=()=>send('Listen carefully for movement or voices behind the barricaded NE door.');$('#ready').onclick=()=>send('Draw my longbow and prepare to fire at the first visible hostile.');$('#send').onclick=()=>{send($('#command').value);$('#command').value=''};$('#command').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();$('#send').click()}});document.querySelectorAll('[data-cmd]').forEach(b=>b.onclick=()=>send(b.dataset.cmd));window.addEventListener('resize',resize);normalize();
+  'use strict';
+  const $=(s)=>document.querySelector(s);
+  const canvas=$('#map');
+  const placeholder=$('#mapPlaceholder');
+  const errorBox=$('#errorBox');
+  let ctx=null;
+  let mapEnabled=false;
+  let state=null;
+  let fighters=[];
+  let selected=null;
+  let pending=false;
+  let view={x:0,y:0,z:1};
+  let resizeTimer=null;
+  let lastCanvas={cssW:0,cssH:0,pixelW:0,pixelH:0,dpr:0};
+
+  function showError(message){
+    const text=String(message||'Unknown widget error').slice(0,1000);
+    errorBox.textContent='Widget error: '+text;
+    errorBox.style.display='block';
+  }
+  window.addEventListener('error',(event)=>showError(event.error?.message||event.message));
+  window.addEventListener('unhandledrejection',(event)=>showError(event.reason?.message||event.reason));
+
+  function currentOpenAI(){return window.openai||null}
+  function bridge(){const o=currentOpenAI();return o&&typeof o.sendFollowUpMessage==='function'?o:null}
+
+  function applyDisplayMode(mode){
+    const safeMode=mode==='fullscreen'?'fullscreen':'inline';
+    document.documentElement.dataset.mode=safeMode;
+    scheduleResize();
+  }
+
+  function hydrateFromOpenAI(globals){
+    const o=currentOpenAI();
+    const output=globals?.toolOutput??o?.toolOutput;
+    const next=output?.combatState||null;
+    if(next){
+      state=next;
+      normalize();
+    }else if(!state){
+      $('#subtitle').textContent='No structured combat state received yet.';
+      $('#details').textContent='The MCP widget loaded, but combat state has not arrived.';
+      updateBridge();
+    }
+    applyDisplayMode(globals?.displayMode??o?.displayMode??'inline');
+  }
+
+  window.addEventListener('openai:set_globals',(event)=>{
+    try{hydrateFromOpenAI(event.detail?.globals||{})}catch(err){showError(err?.message||err)}
+  },{passive:true});
+
+  function normalize(){
+    if(!state)return;
+    fighters=(state.combatants||[]).filter((x)=>x&&x.playerVisible!==false);
+    if(!fighters.some((f)=>f.entityId===selected))selected=fighters[0]?.entityId||null;
+    $('#roundPill').textContent='ROUND '+(state.round??'—');
+    $('#phasePill').textContent='PHASE '+String(state.phase||'—').toUpperCase();
+    $('#encounterPill').textContent=state.encounterId||'Encounter';
+    $('#subtitle').textContent='Player-safe structuredContent • '+(state.stateRevision||'revision unknown');
+    renderFighters();
+    updateBridge();
+    if(mapEnabled){scheduleResize(true);fit();}
+  }
+
+  function updateBridge(msg){
+    const b=bridge(),el=$('#bridge'),dock=$('#dock');
+    if(pending){
+      el.textContent='awaiting DM';el.className='bridge live';dock.classList.add('pending');
+      $('#help').textContent=msg||'Command sent. Waiting for DM adjudication.';
+      return;
+    }
+    dock.classList.remove('pending');
+    if(b){el.textContent='LIVE';el.className='bridge live';$('#help').textContent=msg||'Connected to ChatGPT.'}
+    else{el.textContent='NO BRIDGE';el.className='bridge err';$('#help').textContent=msg||'The widget loaded, but the ChatGPT follow-up bridge is unavailable.'}
+  }
+
+  async function send(text){
+    text=(text||'').trim();
+    if(!text||pending)return;
+    const b=bridge();
+    if(!b){updateBridge('Action NOT sent because no live bridge is available.');return;}
+    if(!state){updateBridge('Action NOT sent because no authoritative combat state is loaded.');return;}
+    pending=true;updateBridge();
+    const payload={encounterId:state.encounterId,stateRevision:state.stateRevision,round:state.round,phase:state.phase,text};
+    try{
+      await b.sendFollowUpMessage({prompt:'DND_COMBAT_ACTION '+JSON.stringify(payload),scrollToBottom:true});
+    }catch(e){pending=false;updateBridge('Send failed: '+(e?.message||e));showError(e?.message||e);}
+  }
+
+  function enableMap(){
+    if(mapEnabled)return;
+    mapEnabled=true;
+    placeholder.hidden=true;
+    canvas.hidden=false;
+    ctx=canvas.getContext('2d');
+    if(!ctx){showError('Canvas 2D context could not be created.');return;}
+    $('#mapToggle').textContent='Map Enabled';
+    $('#mapToggle').disabled=true;
+    scheduleResize(true);
+    requestAnimationFrame(()=>fit());
+  }
+
+  function scheduleResize(force=false){
+    if(!mapEnabled)return;
+    if(resizeTimer)clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(()=>resizeCanvas(force),100);
+  }
+
+  function resizeCanvas(force=false){
+    if(!mapEnabled||!ctx)return;
+    const rect=canvas.getBoundingClientRect();
+    const cssW=Math.max(1,Math.round(rect.width));
+    const cssH=Math.max(1,Math.round(rect.height));
+    const dpr=Math.min(2,Math.max(1,window.devicePixelRatio||1));
+    const pixelW=Math.max(1,Math.round(cssW*dpr));
+    const pixelH=Math.max(1,Math.round(cssH*dpr));
+    if(!force&&cssW===lastCanvas.cssW&&cssH===lastCanvas.cssH&&pixelW===lastCanvas.pixelW&&pixelH===lastCanvas.pixelH&&dpr===lastCanvas.dpr)return;
+    lastCanvas={cssW,cssH,pixelW,pixelH,dpr};
+    if(canvas.width!==pixelW)canvas.width=pixelW;
+    if(canvas.height!==pixelH)canvas.height=pixelH;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    draw();
+  }
+
+  function fit(){
+    if(!mapEnabled||!ctx)return;
+    const r=canvas.getBoundingClientRect();
+    const worldW=656,worldH=900;
+    view={x:r.width*.08,y:r.height*.08,z:Math.max(.1,Math.min(r.width/worldW,r.height/worldH)*.84)};
+    draw();
+  }
+
+  function p(x,y){return{x:view.x+x*view.z,y:view.y+y*view.z}}
+
+  function drawBuilding(){
+    if(!ctx)return;
+    ctx.save();ctx.translate(view.x,view.y);ctx.scale(view.z,view.z);
+    ctx.fillStyle='#1a2118';ctx.strokeStyle='#65705f';ctx.lineWidth=2/Math.max(view.z,.1);
+    ctx.fillRect(240,250,260,330);ctx.strokeRect(240,250,260,330);
+    ctx.fillStyle='#11150f';ctx.fillRect(268,282,204,105);ctx.fillRect(268,420,204,125);
+    ctx.strokeStyle='#394237';ctx.strokeRect(268,282,204,105);ctx.strokeRect(268,420,204,125);
+    ctx.fillStyle='#8f7f50';ctx.fillRect(485,440,16,48);
+    ctx.fillStyle='#45523f';ctx.fillRect(330,560,80,18);
+    ctx.fillStyle='#596454';ctx.font='bold 16px Arial';ctx.fillText('TACTICAL AREA',285,235);
+    ctx.restore();
+  }
+
+  function draw(){
+    if(!mapEnabled||!ctx)return;
+    const r=canvas.getBoundingClientRect();
+    ctx.clearRect(0,0,r.width,r.height);ctx.fillStyle='#090d08';ctx.fillRect(0,0,r.width,r.height);
+    drawBuilding();
+    for(const f of fighters){
+      if(f.x==null||f.y==null)continue;
+      const q=p(f.x,f.y),sel=f.entityId===selected;
+      ctx.beginPath();ctx.arc(q.x,q.y,sel?10:8,0,Math.PI*2);
+      ctx.fillStyle=f.side==='party'?'#83b879':'#d67368';ctx.fill();
+      ctx.lineWidth=sel?3:1.5;ctx.strokeStyle=sel?'#ffe698':'#111';ctx.stroke();
+      ctx.fillStyle='#071006';ctx.font='bold 8px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(String(f.name||'?').split(/\s+/).map((s)=>s[0]).slice(0,2).join(''),q.x,q.y);
+    }
+  }
+
+  function renderFighters(){
+    const box=$('#fighters');box.textContent='';
+    for(const f of fighters){
+      const b=document.createElement('button');b.className='fighter'+(f.entityId===selected?' sel':'');b.dataset.id=f.entityId;
+      const name=document.createElement('span');name.textContent=f.name||'Unknown';b.appendChild(name);
+      const small=document.createElement('small');small.textContent=(f.movementFt??'?')+' ft move • '+(f.positionCertainty||'known');b.appendChild(small);
+      b.onclick=()=>{selected=f.entityId;renderFighters();showDetails();draw()};box.appendChild(b);
+    }
+    showDetails();
+  }
+
+  function showDetails(){
+    const f=fighters.find((x)=>x.entityId===selected);const d=$('#details');d.textContent='';
+    if(!f){d.textContent=state?'No combatant selected.':'Waiting for combat state.';return;}
+    const strong=document.createElement('strong');strong.textContent=f.name;d.appendChild(strong);
+    d.appendChild(document.createElement('br'));d.appendChild(document.createTextNode(f.positionBasis||'Position known'));
+    d.appendChild(document.createElement('br'));d.appendChild(document.createTextNode('Movement: '+(f.movementFt??'UNKNOWN')+' ft'));
+  }
+
+  $('#mapToggle').onclick=enableMap;
+  $('#fit').onclick=fit;
+  $('#fullscreen').onclick=async()=>{
+    const o=currentOpenAI();
+    if(typeof o?.requestDisplayMode==='function'){
+      try{await o.requestDisplayMode({mode:'fullscreen'})}catch(e){showError(e?.message||e)}
+    }else updateBridge('Fullscreen request is not available in this host.');
+  };
+  $('#listen').onclick=()=>send('Listen carefully for movement or voices nearby.');
+  $('#ready').onclick=()=>send('Ready my weapon and prepare to attack the first visible hostile.');
+  $('#send').onclick=()=>{const box=$('#command');const value=box.value;box.value='';send(value)};
+  $('#command').addEventListener('keydown',(e)=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();$('#send').click()}});
+  document.querySelectorAll('[data-cmd]').forEach((b)=>b.onclick=()=>send(b.dataset.cmd));
+  window.addEventListener('resize',()=>scheduleResize(false),{passive:true});
+
+  try{hydrateFromOpenAI()}catch(err){showError(err?.message||err)}
 })();
 </script>
 </body>
