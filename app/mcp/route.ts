@@ -8,7 +8,7 @@ import { z } from "zod";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const UI_VERSION = "2026-09-30-1";
+const UI_VERSION = "2026-10-01-2";
 const RESOURCE_URI = `ui://dnd-combat/live-combat.html?v=${UI_VERSION}`;
 
 const combatantSchema = z.object({
@@ -22,6 +22,7 @@ const combatantSchema = z.object({
   positionCertainty: z.string(),
   positionBasis: z.string(),
   playerVisible: z.boolean(),
+  positionPlayerVisible: z.boolean().optional().default(false),
 });
 
 const combatStateSchema = z.object({
@@ -45,7 +46,10 @@ const combatStateSchema = z.object({
     }).optional(),
   }).optional(),
   combatants: z.array(combatantSchema),
-  notes: z.array(z.string()).optional(),
+});
+
+const outputSchema = z.object({
+  combatState: combatStateSchema,
 });
 
 const handler = createMcpHandler(async (server) => {
@@ -80,14 +84,18 @@ const handler = createMcpHandler(async (server) => {
     "open_dnd_combat",
     {
       title: "D&D Combat",
-      description: "Open the live D&D tactical combat widget for an active encounter. Use whenever combat is active. Supply PLAYER-SAFE state only; never pass DM-only mechanics, hidden enemies, or secret coordinates.",
+      description: "Open the live D&D tactical combat widget for an active encounter. Use whenever combat is active. Supply PLAYER-SAFE state only; never pass DM-only mechanics, hidden enemies, secret rolls, or undisclosed coordinates.",
       inputSchema: {
+        combatState: combatStateSchema,
+      },
+      outputSchema: {
         combatState: combatStateSchema,
       },
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
         openWorldHint: false,
+        idempotentHint: true,
       },
       _meta: {
         ui: { resourceUri: RESOURCE_URI },
@@ -101,8 +109,17 @@ const handler = createMcpHandler(async (server) => {
       const parsed = combatStateSchema.parse(combatState);
       const safeState = {
         ...parsed,
-        combatants: parsed.combatants.filter((c) => c.playerVisible === true),
+        combatants: parsed.combatants
+          .filter((c) => c.playerVisible === true)
+          .map((c) => ({
+            ...c,
+            x: c.positionPlayerVisible === true ? c.x : null,
+            y: c.positionPlayerVisible === true ? c.y : null,
+          })),
       };
+
+      const structuredContent = outputSchema.parse({ combatState: safeState });
+
       return {
         content: [
           {
@@ -110,7 +127,7 @@ const handler = createMcpHandler(async (server) => {
             text: `Combat active: round ${safeState.round}, ${safeState.phase}.`,
           },
         ],
-        structuredContent: { combatState: safeState },
+        structuredContent,
       };
     },
   );
