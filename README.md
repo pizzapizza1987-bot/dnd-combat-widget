@@ -24,4 +24,6 @@ Sites deploys the Worker in `dist/server/index.js` with its generated Wrangler c
 
 ## Connection status
 
-The private Site and `/api/mcp` endpoint are deployed. Sites-managed plugin registration remains incomplete: the platform reports `has_mcp: false` and refuses `include_mcp_connection`. No plugin installation or real ChatGPT iframe interaction has been verified. Hosting manifest MCP declaration fields tried during migration were rejected and removed. Use the current Sites MCP capability instructions before attempting registration; do not weaken Site access or share a bypass credential.
+The existing Sites plugin is published and recognized. Version 4 rebuilds the inline UI as a fixed 500px surface with one MCP Apps bridge, no canvas, no resize observers, and an optional SVG display of disclosed positions. Real-device ChatGPT rendering still requires confirmation. Older interactive UI is retained as a reference in public/combat-widget-interactive.html.
+
+GitHub is a synchronized source mirror; pushing there does not automatically update the Sites publication.

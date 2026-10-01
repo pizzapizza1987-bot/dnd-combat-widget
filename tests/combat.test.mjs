@@ -9,7 +9,7 @@ const fighter={entityId:'f1',name:'Visible guard',side:'hostile',x:25,y:30,z:0,p
 test('MCP initialization, primary tool, and embedded resource',async()=>{
  const init=await rpc('initialize',{protocolVersion:'2025-06-18',capabilities:{},clientInfo:{name:'test',version:'1'}});assert.equal(init.serverInfo.name,'dnd-combat-widget');
  const list=await rpc('tools/list');assert.deepEqual(list.tools.map(t=>t.name),['open_dnd_combat']);assert.deepEqual(list.tools[0]._meta.ui.visibility,['model']);
- const resource=await rpc('resources/read',{uri:list.tools[0]._meta.ui.resourceUri});assert.match(resource.contents[0].text,/LIVE COMBAT COMMAND/);assert.doesNotMatch(resource.contents[0].text,/Combat widget paused|recovery-mode/);assert.match(resource.contents[0].text,/autoResize:!1/);
+ const resource=await rpc('resources/read',{uri:list.tools[0]._meta.ui.resourceUri});assert.match(resource.contents[0].text,/Rebuilt widget/);assert.doesNotMatch(resource.contents[0].text,/Combat widget paused|recovery-mode/);assert.match(resource.contents[0].text,/autoResize:!1/);
 });
 test('filter hidden entities, strip secrets, conceal undisclosed coordinates and enemy mechanics',async()=>{
  const input={...base,dmNotes:'SECRET',notes:['SECRET'],combatants:[fighter,{...fighter,entityId:'hidden',name:'SECRET',playerVisible:false,positionPlayerVisible:true}]};

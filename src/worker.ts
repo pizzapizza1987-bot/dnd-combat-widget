@@ -3,7 +3,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { registerAppResource, registerAppTool, RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { combatStateSchema, playerSafeOutputSchema, playerSafeState } from './state';
 import html from '../build/widget.html';
-const uri='ui://dnd-combat/live-combat-mobile-v3.html';
+const uri='ui://dnd-combat/combat-rebuilt-v4.html';
 function server() {
  const mcp=new McpServer({name:'dnd-combat-widget',version:'1.1.0'});
  registerAppResource(mcp,'D&D Combat',uri,{mimeType:RESOURCE_MIME_TYPE},async()=>({contents:[{uri,mimeType:RESOURCE_MIME_TYPE,text:html,_meta:{ui:{prefersBorder:false,csp:{connectDomains:[],resourceDomains:[]}},'openai/widgetDescription':'Player-safe tactical map and declaration dock. ChatGPT alone resolves combat.','openai/widgetPrefersBorder':false,'openai/ui':{availableDisplayModes:['inline','fullscreen']}}}]}));
