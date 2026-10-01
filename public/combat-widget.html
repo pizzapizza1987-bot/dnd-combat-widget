@@ -1,16 +1,81 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>D&D Combat</title><style>
-*{box-sizing:border-box}html,body{margin:0;height:500px;overflow:hidden;background:#111810;color:#eff4e9;font:16px system-ui}main{height:500px;overflow:auto;padding:16px}h1{font-size:20px;margin:0 0 8px}p{line-height:1.4}button,textarea{font:inherit;border:1px solid #7b8e70;border-radius:6px;padding:10px;background:#24301f;color:inherit}button{cursor:pointer}button:disabled{opacity:.5}textarea{display:block;width:100%;height:76px;margin:12px 0}#error{color:#ffb7ac}#status{color:#c4d59d}li{margin:8px 0}svg{display:block;width:100%;height:180px;background:#080e08;margin-top:12px} [hidden]{display:none!important}
-</style></head><body><main><h1>D&D Combat</h1><div id="status" role="status">Widget loaded · connecting to ChatGPT…</div><p id="error" role="alert" hidden></p><p id="summary">Waiting for combat state.</p><ul id="fighters"></ul><button id="mapButton" type="button">Show simple map</button><div id="map" hidden></div><label for="command">Your declaration</label><textarea id="command" placeholder="Describe your action to the DM"></textarea><button id="send" disabled>Send to DM</button><p>Actions are proposals. The DM resolves them in chat.</p><small>Rebuilt widget · version 4 · no canvas</small></main>
-<script>
-(()=>{'use strict';const $=id=>document.getElementById(id);let state=null,pending=false;
-function error(e){$('error').hidden=false;$('error').textContent=String(e?.message||e||'Unknown error').slice(0,400)}
-window.addEventListener('error',e=>error(e.error||e.message));window.addEventListener('unhandledrejection',e=>error(e.reason));window.addEventListener('dnd:error',e=>error(e.detail));
-function update(){const connected=!!window.dndBridge; $('send').disabled=!state||!connected||pending;$('status').textContent=pending?'Sent · awaiting the DM':connected?(state?'Connected to ChatGPT':'Connected · waiting for state'):'Widget loaded · connecting to ChatGPT…'}
-function receive(output){const next=output?.combatState;if(!next||!next.stateRevision||!Array.isArray(next.combatants))return;if(!state||state.stateRevision!==next.stateRevision||state.encounterId!==next.encounterId)pending=false;state=next;$('summary').textContent='Round '+state.round+' · '+state.phase;$('fighters').replaceChildren();for(const f of state.combatants.filter(f=>f.playerVisible===true)){const li=document.createElement('li');li.textContent=f.name+' · '+f.side;$('fighters').append(li)}if(!$('map').hidden)drawMap();update()}
-function drawMap(){const ns='http://www.w3.org/2000/svg';const svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 656 900');svg.setAttribute('aria-label','Disclosed positions only; schematic, not a measured map');for(const f of (state?.combatants||[])){if(f.playerVisible!==true||f.positionPlayerVisible!==true||!Number.isFinite(f.x)||!Number.isFinite(f.y))continue;const c=document.createElementNS(ns,'circle');c.setAttribute('cx',String(f.x));c.setAttribute('cy',String(f.y));c.setAttribute('r','20');c.setAttribute('fill',f.side==='party'?'#83b879':'#d67368');const t=document.createElementNS(ns,'title');t.textContent=f.name;c.append(t);svg.append(c)}$('map').replaceChildren(svg)}
-window.addEventListener('dnd:result',e=>receive(e.detail));window.addEventListener('dnd:connected',update);
-$('mapButton').onclick=()=>{$('map').hidden=!$('map').hidden;$('mapButton').textContent=$('map').hidden?'Show simple map':'Hide map';if(!$('map').hidden)drawMap()};
-$('send').onclick=async()=>{const text=$('command').value.trim();if(!text||!state||pending||!window.dndBridge)return;pending=true;update();try{await window.dndBridge.sendFollowUpMessage({prompt:'DND_COMBAT_ACTION '+JSON.stringify({campaignId:state.campaignId,encounterId:state.encounterId,stateRevision:state.stateRevision,round:state.round,phase:state.phase,declarationId:crypto.randomUUID(),kind:'proposal',text})});$('command').value=''}catch(e){pending=false;error(e);update()}};
-update();})();
-</script></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>D&D Combat</title>
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;height:500px;overflow:hidden;background:#111810;color:#eff4e9;font:16px system-ui}
+    main{height:500px;overflow:auto;padding:16px}
+    h1{font-size:20px;margin:0 0 8px}
+    p{line-height:1.4}
+    #error{color:#ffb7ac;white-space:pre-wrap}
+    #status{color:#c4d59d}
+    #checkpoints{padding-left:22px}
+    #checkpoints li{margin:6px 0}
+    #fighters li{margin:8px 0}
+    small{color:#9aa893}
+    [hidden]{display:none!important}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>D&D Combat</h1>
+    <div id="status" role="status">Widget loaded · waiting for MCP bridge…</div>
+    <p id="error" role="alert" hidden></p>
+    <ol id="checkpoints" aria-label="Startup checkpoints">
+      <li>UI parsed</li>
+    </ol>
+    <p id="summary">Waiting for combat state.</p>
+    <ul id="fighters"></ul>
+    <p><small>Recovery build · version 5 · MCP handshake only · declarations and graphics temporarily disabled</small></p>
+  </main>
+  <script>
+  (()=>{
+    'use strict';
+    const $=id=>document.getElementById(id);
+    const checkpoints=new Set(['UI parsed']);
+    let state=null;
+
+    function showError(value){
+      const message=String(value?.message||value||'Unknown error').slice(0,600);
+      $('error').hidden=false;
+      $('error').textContent=message;
+      $('status').textContent='Startup failed';
+    }
+
+    function addCheckpoint(label){
+      const text=String(label||'').trim();
+      if(!text||checkpoints.has(text)) return;
+      checkpoints.add(text);
+      const li=document.createElement('li');
+      li.textContent=text;
+      $('checkpoints').append(li);
+      $('status').textContent=text;
+    }
+
+    function receive(output){
+      const next=output?.combatState;
+      if(!next||!next.stateRevision||!Array.isArray(next.combatants)) return;
+      state=next;
+      $('summary').textContent='Round '+state.round+' · '+state.phase+' · revision '+state.stateRevision;
+      $('fighters').replaceChildren();
+      for(const fighter of state.combatants.filter(item=>item.playerVisible===true)){
+        const li=document.createElement('li');
+        li.textContent=fighter.name+' · '+fighter.side;
+        $('fighters').append(li);
+      }
+    }
+
+    window.addEventListener('error',event=>showError(event.error||event.message));
+    window.addEventListener('unhandledrejection',event=>showError(event.reason));
+    window.addEventListener('dnd:error',event=>showError(event.detail));
+    window.addEventListener('dnd:checkpoint',event=>addCheckpoint(event.detail));
+    window.addEventListener('dnd:result',event=>receive(event.detail));
+    window.addEventListener('dnd:connected',()=>addCheckpoint('Bridge connected'));
+  })();
+  </script>
+  <!-- MCP_BRIDGE -->
+</body>
+</html>

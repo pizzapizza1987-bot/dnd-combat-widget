@@ -1,29 +1,56 @@
 # D&D Combat Widget — ChatGPT Site
 
-Adapted from https://github.com/pizzapizza1987-bot/dnd-combat-widget, preserving its Eastern Watch tactical map, combatant selector, and command dock.
+Player-safe D&D tactical combat UI for ChatGPT. ChatGPT remains the sole combat authority.
 
 - Primary and only MCP tool: `open_dnd_combat`
-- Verified deployed Streamable HTTP endpoint: `/api/mcp`. The handler also accepts `/mcp`, but Sites currently reserves that public route.
-- UI resource: MCP Apps HTML with both the standard message bridge and the existing ChatGPT compatibility bridge.
-- Standalone Site: displays the interface; sending requires a ChatGPT host bridge and authoritative tool result.
-- No database, dice rolls, automated resolution, token movement, or authoritative state writes.
+- Authoritative MCP server: the Worker in `src/worker.ts`
+- MCP endpoints served by that same Worker: `/api/mcp` and `/mcp`
+- Single UI resource URI: `ui://dnd-combat/combat-v5.html`
+- No database, dice rolls, automated resolution, token movement, or authoritative state writes
 
 ## Player-safe contract
 
-ChatGPT must construct player-safe arguments **before calling the tool**. MCP hosts may expose arguments, so never include DM notes, hidden enemies, hidden coordinates, or undisclosed mechanics in arguments. The server also projects an allowlisted result, removes non-visible entities, strips arbitrary extra fields and notes, and removes enemy movement mechanics. For coordinates to appear, `positionPlayerVisible` must explicitly be true; otherwise x/y/z are null. Text fields such as names must already be safe to reveal. The renderer cannot infer whether a name contains a secret.
+ChatGPT must construct player-safe arguments **before calling the tool**. MCP hosts may expose arguments, so never include DM notes, hidden enemies, hidden coordinates, or undisclosed mechanics in arguments. The server also projects an allowlisted result, removes non-visible entities, strips arbitrary extra fields and notes, and removes enemy movement mechanics. For coordinates to appear, `positionPlayerVisible` must explicitly be true; otherwise x/y/z are null. Text fields such as names must already be safe to reveal.
 
-Each declaration contains encounterId, stateRevision, round, phase, a unique declarationId, and kind=proposal. ChatGPT must reject stale or duplicate declarations and adjudicate according to campaign rules. Supply a new revision using `open_dnd_combat` afterward. UI selection and view fitting are presentation-only. Pending declarations remain locked until a different authoritative revision is received; failed delivery keeps the typed text for retry.
+Each future declaration will contain encounterId, stateRevision, round, phase, a unique declarationId, and kind=proposal. ChatGPT must reject stale or duplicate declarations and adjudicate according to campaign rules. Supply a new revision using `open_dnd_combat` afterward.
 
-The original map is an Eastern Watch Station schematic; it is not generated geometry or an authoritative movement calculator. Do not use it to disclose unvisited areas or imply scale accuracy beyond the supplied campaign map.
+## Version 5 recovery build
+
+Version 5 deliberately isolates MCP startup from every optional widget feature.
+
+The current embedded UI is fixed at 500 px and contains no canvas, SVG map, ResizeObserver, DPR scaling, fullscreen request, host-size notification, or chat-message sending. It displays only startup checkpoints and player-safe combat state.
+
+The view bridge is intentionally tiny. It does **not** bundle the MCP Apps client SDK. Instead it implements the stable MCP Apps JSON-RPC iframe handshake directly over `postMessage`:
+
+1. `UI parsed`
+2. `Bridge parsed`
+3. `Connecting`
+4. `MCP initialized`
+5. `Tool result received`
+
+This makes native-app failure location visible. If `Bridge parsed` never appears, the generated bridge did not parse or execute. If startup stops at `Connecting`, the failure is in the host initialization handshake. If `MCP initialized` appears but no result arrives, the problem is result delivery rather than JavaScript parsing.
+
+Declarations, SVG, fullscreen, and tactical-map features stay disabled until this recovery build survives the Android ChatGPT app.
+
+## One MCP/resource path
+
+The previous duplicate Next.js MCP route has been removed. Sites deploys the Worker in `dist/server/index.js`; that Worker owns both `/api/mcp` and `/mcp` and registers one combat resource URI. There is no second raw-HTML resource path that can silently drift from the generated widget.
 
 ## Build and verify
 
-`npm ci`, `npm run build`, `npm test`, `npx tsc --noEmit`.
+Run:
 
-Sites deploys the Worker in `dist/server/index.js` with its generated Wrangler configuration. The source Next.js adapter is retained for compatibility (`npm run build:next`). The Site's MCP implementation shares the player-safe projection with that adapter.
+```text
+npm ci
+npm run build
+npm test
+npx tsc --noEmit
+```
 
-## Connection status
+The build now parses the generated bridge JavaScript and every inline `<script>` in the final `build/widget.html`. A malformed or truncated generated script fails the build immediately. CI runs the build, tests, and TypeScript checks on pull requests and pushes to `main`.
 
-The existing Sites plugin is published and recognized. Version 4 rebuilds the inline UI as a fixed 500px surface with one MCP Apps bridge, no canvas, no resize observers, and an optional SVG display of disclosed positions. Real-device ChatGPT rendering still requires confirmation. Older interactive UI is retained as a reference in public/combat-widget-interactive.html.
+The test suite reads the actual generated `build/widget.html`, not a mocked bridge, and the mobile regression test targets the current v5 widget instead of the retired interactive HTML.
 
-GitHub is a synchronized source mirror; pushing there does not automatically update the Sites publication.
+## Publishing
+
+GitHub is a synchronized source mirror. Pushing or merging this repository does **not** automatically replace the already-published ChatGPT Site/plugin. After this branch passes CI, the same source must be synchronized into the existing Sites project and republished before the live plugin will use version 5.

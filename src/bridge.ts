@@ -1,17 +1,74 @@
-import { App } from '@modelcontextprotocol/ext-apps';
-const app = new App({ name: 'D&D Combat', version: '1.2.0' }, {}, { autoResize: false });
-app.onhostcontextchanged = context => { if (context.displayMode) window.dispatchEvent(new CustomEvent('dnd:mode', {detail:context.displayMode})); };
-app.ontoolresult = result => window.dispatchEvent(new CustomEvent('dnd:result', { detail: result.structuredContent }));
-if (window.parent !== window) {
- app.connect().then(() => {
-  // Fixed inline surface: never measure and resize the host in a feedback loop.
-  void app.sendSizeChanged({height:500}).catch(error => window.dispatchEvent(new CustomEvent('dnd:error', {detail:error.message})));
-  const mode=app.getHostContext()?.displayMode;
-  if(mode) window.dispatchEvent(new CustomEvent('dnd:mode', {detail:mode}));
-  (window as any).dndBridge = { requestDisplayMode: (params: {mode:'inline'|'fullscreen'}) => app.requestDisplayMode(params), sendFollowUpMessage: async ({prompt}: {prompt:string}) => {
-   const result = await app.sendMessage({ role: 'user', content: [{type:'text', text:prompt}] });
-   if (result.isError) throw new Error('ChatGPT did not accept the declaration.');
-  }};
-  window.dispatchEvent(new Event('dnd:connected'));
- }).catch(error => window.dispatchEvent(new CustomEvent('dnd:error', {detail:error.message})));
+type JsonRpcResult={jsonrpc:'2.0';id:number;result?:unknown;error?:{message?:string}|unknown};
+type JsonRpcNotification={jsonrpc:'2.0';method:string;params?:any};
+type PendingRequest={resolve:(value:unknown)=>void;reject:(error:Error)=>void};
+
+const pending=new Map<number,PendingRequest>();
+let nextId=1;
+
+function checkpoint(label:string){
+  window.dispatchEvent(new CustomEvent('dnd:checkpoint',{detail:label}));
+}
+
+function fail(error:unknown){
+  const message=error instanceof Error?error.message:String(error);
+  window.dispatchEvent(new CustomEvent('dnd:error',{detail:message}));
+}
+
+function sendRequest(method:string,params:unknown){
+  const id=nextId++;
+  const promise=new Promise<unknown>((resolve,reject)=>{
+    pending.set(id,{resolve,reject});
+  });
+  window.parent.postMessage({jsonrpc:'2.0',id,method,params},'*');
+  return promise;
+}
+
+function sendNotification(method:string,params:unknown={}){
+  window.parent.postMessage({jsonrpc:'2.0',method,params},'*');
+}
+
+window.addEventListener('message',event=>{
+  if(event.source!==window.parent) return;
+  const data=event.data as JsonRpcResult|JsonRpcNotification|undefined;
+  if(!data||data.jsonrpc!=='2.0') return;
+
+  if('id' in data&&typeof data.id==='number'){
+    const request=pending.get(data.id);
+    if(!request) return;
+    pending.delete(data.id);
+    if('error' in data&&data.error){
+      const message=typeof data.error==='object'&&data.error&&'message' in data.error
+        ?String(data.error.message)
+        :String(data.error);
+      request.reject(new Error(message));
+    }else{
+      request.resolve(data.result);
+    }
+    return;
+  }
+
+  if('method' in data&&data.method==='ui/notifications/tool-result'){
+    checkpoint('Tool result received');
+    window.dispatchEvent(new CustomEvent('dnd:result',{
+      detail:data.params?.structuredContent,
+    }));
+  }
+});
+
+checkpoint('Bridge parsed');
+
+if(window.parent!==window){
+  checkpoint('Connecting');
+  sendRequest('ui/initialize',{
+    appCapabilities:{},
+    appInfo:{name:'D&D Combat',version:'1.3.0'},
+    protocolVersion:'2026-01-26',
+  })
+    .then(()=>{
+      sendNotification('ui/notifications/initialized',{});
+      (window as Window&{dndBridge?:{connected:true}}).dndBridge={connected:true};
+      checkpoint('MCP initialized');
+      window.dispatchEvent(new Event('dnd:connected'));
+    })
+    .catch(fail);
 }
